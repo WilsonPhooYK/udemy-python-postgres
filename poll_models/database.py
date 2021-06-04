@@ -5,6 +5,7 @@ from typings.psycopg2 import Connection
 Poll = tuple[int, str, str]
 Option = tuple[int, str, int]
 Vote = tuple[str, int, float]
+OptionSpread = tuple[str, int]
 
 CREATE_POLLS = """CREATE TABLE IF NOT EXISTS polls
 (id SERIAL PRIMARY KEY, title TEXT, owner_username TEXT);"""
@@ -33,6 +34,18 @@ WHERE polls.id = (SELECT * FROM latest_id);"""
 
 SELECT_OPTION = "SELECT * FROM options WHERE id = %s;"
 SELECT_VOTES_FOR_OPTION = "SELECT * FROM votes WHERE votes.option_id = %s;"
+SELECT_OPTIONS_IN_POLL = """SELECT options.option_text, COUNT(votes)
+FROM options
+JOIN polls ON options.poll_id = polls.id
+JOIN votes ON votes.option_id = options.id
+WHERE polls.id = %s
+GROUP BY options.option_text;"""
+SELECT_POLLS_AND_VOTES = """SELECT polls.title, COUNT(votes.option_id)
+FROM polls
+JOIN options ON options.poll_id = polls.id
+JOIN votes ON votes.option_id = options.id
+GROUP BY polls.title
+"""
 
 INSERT_POLL_RETURN_ID = "INSERT INTO polls (title, owner_username) VALUES (%s, %s) RETURNING id;"
 INSERT_OPTION_RETURNING_ID = "INSERT INTO options (option_text, poll_id) VALUES (%s, %s) RETURNING id;"
@@ -83,7 +96,16 @@ def get_poll_options(connection: Connection, poll_id: int) -> list[Option]:
     with get_cursor(connection) as cursor:
         cursor.execute(SELECT_POLL_OPTIONS, (poll_id,))
         return cast(list[Option], cursor.fetchall())
-
+    
+def get_options_spread_in_poll(connection: Connection, poll_id: int) -> list[OptionSpread]:
+    with get_cursor(connection) as cursor:
+        cursor.execute(SELECT_OPTIONS_IN_POLL, (poll_id,))
+        return cast(list[OptionSpread], cursor.fetchall())
+    
+def get_polls_and_votes(connection: Connection) -> list[OptionSpread]:
+    with get_cursor(connection) as cursor:
+        cursor.execute(SELECT_POLLS_AND_VOTES)
+        return cast(list[OptionSpread], cursor.fetchall())
 # -- options --
 
 def get_option(connection: Connection, option_id: int) -> Option:

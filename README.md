@@ -1,5 +1,6 @@
 # udemy-python-postgres
 1. [The Complete Python/PostgreSQL Course 2.](https://www.https://www.udemy.com/course/complete-python-postgresql-database-course/)
+Ebook [here](https://pysql.tecladocode.com/)
 2. Used with Pylance extension to practice typed annotations with Python as well.
 3. Install pipenv: `py -m pip install pipenv`
 4. Create new pipenv project: `py -m pipenv --python 3.9`, temporary disable uwsgi and psycopg2 first
@@ -142,4 +143,94 @@ eastern = pytz.timezone('US/Eastern')
 
 user_date = eastern.localize(datetime.datetime.now(2020, 4, 15, 6, 0, 0))
 utc_date = user_date.astimezone(pytz.utc)
+```
+
+# Composite primary keys
+1. Create table
+```
+CREATE TABLE customer_details (
+    account_number INTEGER,
+    sort_code INTEGER,
+    PRIMARY KEY (account_number, sort_code)
+);
+
+CREATE TABLE customer_details (
+    account_number INTEGER,
+    sort_code INTEGER,
+    FOREIGN KEY (account_number, sort_code) REFERENCES accounts
+    -- or
+    FOREIGN KEY (account_number, sort_code) REFERENCES accounts (account_number, sort_code)
+);
+```
+
+# Postgres user defined functions
+1. Create function
+```
+CREATE FUNCTION delete_inactive(seconds NUMERIC) RETURNS void AS $$
+    DELETE FROM users WHERE last_opened > seconds;
+$$ LANGUAGE SQL; 
+
+SELECT delete_inactive(5000); -- Runs the function
+
+DROP FUNCTION delete_inactive(NUMERIC) -- Need variable type as we can have overloaded functions
+
+CREATE OR REPLACE FUNCTION delete_inactive(seconds NUMERIC) RETURNS NIGINT AS $$
+    WITH deleted AS (DELETE FROM users WHERE last_opened > seconds RETURNING *);
+    SELECT COUNT(*) FROM deleted;
+$$ LANGUAGE SQL;
+
+SELECT delete_inactive(86400)
+```
+2. Composite types and sets in functions
+```
+CREATE OR REPLACE FUNCTION opened_ago(email_open_row email_opens) RETURNS INTEGER AS $$
+    SELECT cast(extract(epoch FROM CURRENT_TIMESTAMP) AS INTEGER) - email_open_row.opened_time AS email_opened_ago;
+$$ LANGUAGE SQL;
+
+SELECT *, opened_ago(email_opens) FROM email_opens;
+
+SELECT * FROM users
+JOIN email_opens ON users.id = email_opens.user_id
+WHERE opened_ago(email_opens) < 17509903;
+```
+3. Stored procedures - Functions as transactions
+```
+CREATE PROCEDURE insert_test_data() AS $$
+BEGIN
+    DROP TABLE IF EXISTS test_data;
+    CREATE TABLE test_data (id INTEGER, name TEXT);
+    INSERT INTO test_data VALUES (1, 'Rob');
+    INSERT INTO test_data VALUES (2, 'Rolf');
+    COMMIT;
+END;
+$$ LANGUAGE plpgsql; -- Need this language to prevent test_data not defined
+
+CALL insert_test_data(); -- Cannot call 2 procedures in the same transaction
+```
+
+4. Locking
+- Table level locking
+- Row level locking
+- Advisory locking
+
+5. AIOPG - Async psycopg2
+
+6. SQL string composition
+```
+from psycopg2 import sql
+
+query = sql.SQL("SELECT * FROM {table} WHERE {column} = %s;")
+query = query.format(
+    table=sql.Identifier(table_name),
+    column=sql.Identifier(column_name)
+)
+```
+```
+fields = fields_csv.strip().split(",")
+sql_fields = [sql.Identifier(field) for field in fields]
+
+query = sql.SQL("SELECT {fields} FROM users;")
+query = query.format(
+    fields=sql.SQL(",").join(sql_fields)
+)
 ```

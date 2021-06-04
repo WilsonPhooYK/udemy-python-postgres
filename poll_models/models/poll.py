@@ -28,6 +28,12 @@ class Poll:
         
         return [Option(option[1], option[2], option[0]) for option in options]
     
+    @property
+    def options_spread(self) -> list[database.OptionSpread]:
+        with get_connection() as connection:
+            spreads = database.get_options_spread_in_poll(connection, self.id)
+            return spreads
+    
     @classmethod
     def get(cls, poll_id: int) -> "Poll":
         with get_connection() as connection:
@@ -39,6 +45,12 @@ class Poll:
         with get_connection() as connection:
             polls = database.get_polls(connection)
             return [cls(poll[1], poll[2], poll[0]) for poll in polls]
+        
+    @classmethod
+    def get_polls_and_votes(cls) -> list[database.OptionSpread]:
+        with get_connection() as connection:
+            polls_and_votes = database.get_polls_and_votes(connection)
+            return polls_and_votes
     
     
     @classmethod

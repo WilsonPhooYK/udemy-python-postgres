@@ -54,7 +54,7 @@ LEFT JOIN (
 		COUNT(options.id) / SUM(COUNT(options.id)) OVER() * 100.0 AS vote_percentage
 	FROM options
 	INNER JOIN votes ON votes.option_id = options.id
-	WHERE options.poll_id = 1
+	WHERE options.poll_id = %s
 	GROUP BY options.id
 ) AS A
 ON options.id = A.id

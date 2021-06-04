@@ -1,8 +1,10 @@
 from datetime import datetime
 import random
+import matplotlib.pyplot as plt
 
 import pytz
 import database
+import charts
 from models.option import Option
 from models.poll import Poll
 from connection_pool import get_connection
@@ -16,11 +18,13 @@ MENU_PROMPT = """-- Menu --
 3) Vote on a poll
 4) Show poll votes
 5) Select a random winner from a poll option
-6) Exit
+6) Chart Polls
+7) Chart All Polls
+8) Exit
 
 Enter your choice: """
 NEW_OPTION_PROMPT = "Enter new option text (or leave empty to stop adding options): "
-
+CHART_POLL_PROMPT = "Select the poll id to create a pie chart of the vote percentages (Enter 'q' to quit): "
 
 def prompt_create_poll():
     poll_title = input("Enter poll title: ")
@@ -88,6 +92,19 @@ def randomize_poll_winner():
     votes = Option.get(option_id).votes
     winner = random.choice(votes)
     print(f"The randomly selected winner is {winner[0]}.")
+    
+def chart_polls():
+    while (selected_poll := input(CHART_POLL_PROMPT) != 'q'):
+        options_spread = Poll.get(int(selected_poll)).options_spread
+        # Draw pie chart here
+        _ = charts.create_pie_chart(options_spread)
+        plt.show()
+        
+def chart_all_polls():
+    options_spread = Poll.get_polls_and_votes()
+    # Draw pie chart here
+    _ = charts.create_bar_chart(options_spread)
+    plt.show()
 
 
 MENU_OPTIONS = {
@@ -95,7 +112,9 @@ MENU_OPTIONS = {
     "2": list_open_polls,
     "3": prompt_vote_poll,
     "4": show_poll_votes,
-    "5": randomize_poll_winner
+    "5": randomize_poll_winner,
+    "6": chart_polls,
+    "7": chart_all_polls
 }
 
 
@@ -103,7 +122,7 @@ def menu():
     with get_connection() as connection:
         database.create_tables(connection)
 
-    while (selection := input(MENU_PROMPT)) != "6":
+    while (selection := input(MENU_PROMPT)) != "8":
         try:
             MENU_OPTIONS[selection]()
         except KeyError:

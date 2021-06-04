@@ -8,6 +8,7 @@ pylint = "*"
 python-dotenv = "*"
 psycopg2-binary = "*"
 pytz = "*"
+matplotlib = "*"
 
 [dev-packages]
 black = "==21.5b1"
